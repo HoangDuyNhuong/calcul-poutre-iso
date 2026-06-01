@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
+from backend import calculer_taux_travail
+
 
 @st.cache_data
 def load_catalogue():
@@ -196,15 +198,24 @@ def main():
             )
 
         st.divider()
+        if st.button("Calculer", type="primary", use_container_width=True):
+            try:
+                taux = calculer_taux_travail(
+                    longueur, section, limite_elastique,
+                    charge_type, charge_val, xs, xf, x_app
+                )
+                st.session_state["taux_travail"] = taux
+            except Exception as e:
+                st.error(f"Erreur de calcul : {e}")
+
         st.subheader("Résultat")
         taux = st.session_state.get("taux_travail", None)
         if taux is not None:
-            color = "normal" if taux <= 100 else "inverse"
             st.metric(
                 label="Taux de travail",
                 value=f"{taux:.1f} %",
                 delta=f"{taux - 100:.1f} % {'(dépassement)' if taux > 100 else '(marge)'}",
-                delta_color=color
+                delta_color="inverse"
             )
         else:
             st.info("Taux de travail : en attente du calcul backend.")

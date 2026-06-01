@@ -3,7 +3,7 @@
 ## Objectif
 
 Outil de calcul d'une **poutre horizontale isostatique à 1D** (2 appuis aux extrémités, profondeur y négligée).  
-Le projet est découpé en deux couches : un **frontend Streamlit** (fait) et un **backend de calcul** (à faire).
+Le projet est découpé en deux couches : un **frontend Streamlit** (fait) et un **backend de calcul** (fait).
 
 ---
 
@@ -23,6 +23,7 @@ L'app est accessible sur `http://localhost:8501`.
 ```
 calcul-poutre-iso/
 ├── app.py               # Frontend Streamlit (formulaire + schéma matplotlib)
+├── backend.py           # Backend de calcul (moment, contrainte, taux de travail)
 ├── catalogue.xlsx       # Catalogue de sections métalliques
 ├── requirements.txt     # pandas, openpyxl, streamlit, matplotlib
 ├── env/                 # Environnement virtuel Python 3.12
@@ -51,7 +52,9 @@ Affichée en bas de la colonne formulaire via `st.metric`. Elle lit `st.session_
 - Si la clé est absente → `st.info("En attente du calcul backend.")`
 - Si présente → indicateur vert (≤ 100 %) ou rouge (> 100 %) avec delta affiché
 
-**C'est le point d'entrée du backend** : le backend doit écrire dans `st.session_state["taux_travail"]` avant le re-render.
+Un bouton **"Calculer"** (type="primary") précède cette zone. Sur clic, il appelle `calculer_taux_travail()` depuis `backend.py` et écrit le résultat dans `st.session_state["taux_travail"]`.
+
+**Important** : `delta_color` doit toujours être `"inverse"` dans `st.metric` — car le delta vaut `taux - 100` (négatif quand il y a de la marge), et Streamlit colore en rouge les deltas négatifs avec `"normal"`.
 
 ### Visualisation matplotlib (colonne droite)
 
@@ -92,29 +95,41 @@ df = pd.read_excel("catalogue.xlsx", sheet_name="catalogue référence")
 
 ---
 
-## Ce qui reste à faire — Backend
+## Backend — `backend.py`
 
-Le backend doit :
-1. Récupérer les paramètres depuis `st.session_state` (ou via un bouton "Calculer")
-2. Retrouver les propriétés de la section choisie dans `catalogue.xlsx` (filtrer sur `nom_section`)
-3. Calculer les sollicitations (moment fléchissant max, effort tranchant) selon le type de charge
-4. Calculer la contrainte normale max : `σ = M_max / Wel.y`
-5. Calculer le taux de travail : `taux = σ / fy × 100` (avec `fy = limite_elastique` en MPa)
-6. Écrire le résultat dans `st.session_state["taux_travail"]`
+### Fonctions
 
-### Formules de base (poutre isostatique, appuis simples en 0 et L)
+#### `charger_wel_y(nom_section) → float`
+Lit `catalogue.xlsx`, filtre sur `nom_section`, retourne la colonne `"Wel.y mm3 x103"` en **cm³**.  
+Lève `ValueError` si la section est introuvable.
 
-**Charge uniforme** `q` (daN/ml) sur `[xs, xf]` :
+#### `moment_max_uniforme(q, xs, xf, L) → float`
+Formule exacte par équilibre (fonctionne sur portée partielle) :
 ```
-M_max ≈ q * (xf - xs)² / 8   (si xs=0 et xf=L, sinon calcul exact par intégration)
+RA     = q * (xf - xs) * (2*L - xs - xf) / (2*L)
+x_star = xs + RA / q          # abscisse où V = 0
+M_max  = RA * x_star - q * (x_star - xs)**2 / 2   # daN·m
+```
+Cas xs=0, xf=L → M_max = q×L²/8 (vérifié).
+
+#### `moment_max_ponctuel(P, a, L) → float`
+```
+M_max = P * a * (L - a) / L   # daN·m
 ```
 
-**Charge ponctuelle** `P` (daN) en `a = x_app` :
-```
-M_max = P * a * (L - a) / L   (moment en x = a)
-```
+#### `calculer_taux_travail(...) → float`
+Enchaîne les étapes de calcul et retourne le taux (%) :
+1. `wel_y` (cm³) ← catalogue
+2. `M_max` (daN·m) selon le type de charge
+3. `M_max_cm = M_max * 100` (daN·m → daN·cm)
+4. `sigma = M_max_cm / wel_y` (daN/cm²)
+5. `sigma_mpa = sigma / 10` (1 MPa = 10 daN/cm²)
+6. `taux = sigma_mpa / fy * 100` (%)
 
-Les unités de `Wel.y` dans le catalogue sont en **cm³**. Convertir `M` en daN·cm avant le calcul de σ.
+### Conversions d'unités clés
+- `Wel.y` catalogue : valeurs directement en **cm³** (la colonne `"Wel.y mm3 x103"` indique ×10³ mm³ = cm³)
+- Moment : travailler en **daN·cm** pour que `σ = M/W` soit en daN/cm²
+- `1 MPa = 10 daN/cm²` → diviser par 10 pour convertir en MPa
 
 ---
 
