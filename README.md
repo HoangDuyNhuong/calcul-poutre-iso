@@ -8,6 +8,7 @@ Outil de calcul d'une poutre horizontale isostatique (2 appuis simples aux extr�
 - **150 sections métalliques** (IPE, IPN, HEA…) issues d'un catalogue Excel
 - **Taux de travail** calculé selon la contrainte normale maximale, comparé à la limite élastique fy
 - **Schéma matplotlib** de la poutre mis à jour dynamiquement (appuis, charge, maintiens, cotation)
+- **Diagrammes M(x) et V(x)** — effort tranchant et moment fléchissant sur toute la portée, tracés après calcul
 
 ## Installation
 
@@ -33,7 +34,7 @@ L'application est accessible sur `http://localhost:8501`.
 3. Choisir le **type de charge** :
    - *Uniforme* : intensité `q` (daN/ml), entre `xs` et `xf`
    - *Ponctuelle* : intensité `P` (daN) en `x_app`
-4. Cliquer sur **Calculer** — le taux de travail s'affiche en vert (marge) ou rouge (dépassement)
+4. Cliquer sur **Calculer** — le taux de travail s'affiche en vert (marge) ou rouge (dépassement), et les diagrammes M(x) et V(x) apparaissent sous le schéma
 
 ## Formules appliquées
 
@@ -76,4 +77,5 @@ pandas
 openpyxl
 streamlit
 matplotlib
+numpy
 ```

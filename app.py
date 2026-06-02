@@ -4,7 +4,11 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
-from backend import calculer_taux_travail
+from backend import (
+    calculer_taux_travail,
+    compute_diagrams_uniforme,
+    compute_diagrams_ponctuel,
+)
 
 
 @st.cache_data
@@ -120,6 +124,27 @@ def draw_beam(longueur, section, maintiens, charge_type, charge_val, xs=None, xf
     return fig
 
 
+def draw_diagrams(x, V, M):
+    fig, (ax_v, ax_m) = plt.subplots(2, 1, figsize=(12, 5), sharex=True)
+
+    ax_v.plot(x, V, color="#E74C3C", linewidth=2)
+    ax_v.fill_between(x, V, 0, alpha=0.15, color="#E74C3C")
+    ax_v.axhline(0, color="black", linewidth=0.8)
+    ax_v.set_ylabel("V(x)  [daN]")
+    ax_v.grid(True, alpha=0.3)
+
+    ax_m.plot(x, M, color="#5B9BD5", linewidth=2)
+    ax_m.fill_between(x, M, 0, alpha=0.15, color="#5B9BD5")
+    ax_m.axhline(0, color="black", linewidth=0.8)
+    ax_m.set_ylabel("M(x)  [daN·m]")
+    ax_m.set_xlabel("Position  [m]")
+    ax_m.grid(True, alpha=0.3)
+
+    fig.patch.set_facecolor("#F8F9FA")
+    plt.tight_layout()
+    return fig
+
+
 def main():
     st.set_page_config(
         page_title="Calcul Poutre Isostatique",
@@ -205,6 +230,14 @@ def main():
                     charge_type, charge_val, xs, xf, x_app
                 )
                 st.session_state["taux_travail"] = taux
+                if charge_type == "Uniforme":
+                    st.session_state["diagrammes"] = compute_diagrams_uniforme(
+                        charge_val, xs, xf, longueur
+                    )
+                else:
+                    st.session_state["diagrammes"] = compute_diagrams_ponctuel(
+                        charge_val, x_app, longueur
+                    )
             except Exception as e:
                 st.error(f"Erreur de calcul : {e}")
 
@@ -227,6 +260,12 @@ def main():
             charge_type, charge_val, xs, xf, x_app
         )
         st.pyplot(fig, width="stretch")
+
+        if "diagrammes" in st.session_state:
+            x_arr, V_arr, M_arr = st.session_state["diagrammes"]
+            st.subheader("Diagrammes M et V")
+            fig_diag = draw_diagrams(x_arr, V_arr, M_arr)
+            st.pyplot(fig_diag, use_container_width=True)
 
         with st.expander("Récapitulatif des paramètres"):
             data = {

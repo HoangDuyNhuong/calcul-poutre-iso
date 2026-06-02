@@ -133,6 +133,48 @@ Enchaîne les étapes de calcul et retourne le taux (%) :
 
 ---
 
+## Diagrammes M(x) et V(x)
+
+Affichés dans la colonne droite **après le premier clic sur "Calculer"**, sous le schéma de la poutre.
+
+### Backend — nouvelles fonctions dans `backend.py`
+
+#### `compute_diagrams_uniforme(q, xs, xf, L, n=300) → tuple[ndarray, ndarray, ndarray]`
+Retourne `(x, V, M)` — tableaux numpy sur `n` points réguliers entre 0 et L.
+
+```python
+RA = q * (xf - xs) * (2*L - xs - xf) / (2*L)
+V(x) = RA            si x < xs
+       RA - q(x-xs)  si xs ≤ x ≤ xf
+       RA - q(xf-xs) si x > xf
+M(x) = RA·x                           si x < xs
+       RA·x - q(x-xs)²/2              si xs ≤ x ≤ xf
+       RA·x - q(xf-xs)·(x-(xs+xf)/2) si x > xf
+```
+
+#### `compute_diagrams_ponctuel(P, a, L, n=300) → tuple[ndarray, ndarray, ndarray]`
+Retourne `(x, V, M)`.
+
+```python
+RA = P * (L - a) / L
+V(x) = RA      si x < a
+       RA - P  si x ≥ a
+M(x) = RA·x          si x < a
+       RA·x - P(x-a) si x ≥ a
+```
+
+### Frontend — `draw_diagrams(x, V, M)` dans `app.py`
+
+Figure matplotlib avec 2 sous-graphes (`sharex=True`) :
+- Haut : V(x) en rouge `#E74C3C` avec remplissage alpha 0.15
+- Bas : M(x) en bleu `#5B9BD5` avec remplissage alpha 0.15
+
+### Session state
+
+Les tableaux sont calculés dans le handler du bouton "Calculer" et stockés dans `st.session_state["diagrammes"]` en même temps que `taux_travail`. Les diagrammes n'apparaissent pas avant le premier calcul.
+
+---
+
 ## Dépendances
 
 ```
@@ -140,6 +182,7 @@ pandas
 openpyxl
 streamlit
 matplotlib
+numpy
 ```
 
 Installation : `pip install -r requirements.txt` (dans `env/`).

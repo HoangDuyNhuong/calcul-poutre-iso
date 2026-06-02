@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -22,6 +23,30 @@ def moment_max_uniforme(q: float, xs: float, xf: float, L: float) -> float:
 def moment_max_ponctuel(P: float, a: float, L: float) -> float:
     """Moment fléchissant max (daN·m) pour une charge P (daN) en x=a."""
     return P * a * (L - a) / L
+
+
+def compute_diagrams_uniforme(
+    q: float, xs: float, xf: float, L: float, n: int = 300
+) -> tuple:
+    RA = q * (xf - xs) * (2 * L - xs - xf) / (2 * L)
+    x = np.linspace(0, L, n)
+    V = np.where(x < xs, RA,
+        np.where(x <= xf, RA - q * (x - xs),
+                 RA - q * (xf - xs)))
+    M = np.where(x < xs, RA * x,
+        np.where(x <= xf, RA * x - q * (x - xs) ** 2 / 2,
+                 RA * x - q * (xf - xs) * (x - (xs + xf) / 2)))
+    return x, V, M
+
+
+def compute_diagrams_ponctuel(
+    P: float, a: float, L: float, n: int = 300
+) -> tuple:
+    RA = P * (L - a) / L
+    x = np.linspace(0, L, n)
+    V = np.where(x < a, RA, RA - P)
+    M = np.where(x < a, RA * x, RA * x - P * (x - a))
+    return x, V, M
 
 
 def calculer_taux_travail(
